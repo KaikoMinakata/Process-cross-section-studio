@@ -99,6 +99,10 @@ h2 {
   margin-bottom: 8px;
 }
 
+.group.process-notes {
+  grid-template-columns: 1fr;
+}
+
 label {
   display: flex;
   flex-direction: column;

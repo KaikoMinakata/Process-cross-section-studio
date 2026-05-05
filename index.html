@@ -26,7 +26,7 @@
             </label>
             <label>
               Thickness / Depth (cell)
-              <input id="amountInput" type="number" min="1" max="40" value="6" />
+              <input id="amountInput" type="number" min="0.1" max="40" step="0.1" value="6" />
             </label>
             <label>
               Etch Type
@@ -48,7 +48,7 @@
             <button id="undoBtn" class="secondary">Undo</button>
             <button id="resetBtn" class="danger">Reset</button>
           </div>
-          <div class="group">
+          <div class="group process-notes">
             <label>
               Process Purpose
               <textarea id="purposeInput" rows="2" placeholder="Example: Ensure device isolation with STI formation"></textarea>
@@ -91,9 +91,10 @@
             <label>
               Mask Preset
               <select id="maskPreset">
-                <option value="none">None</option>
-                <option value="lines">Line/Space</option>
+                <option value="single-device">Single Device</option>
+                <option value="lines">Line/Space Array</option>
                 <option value="contact">Contact Holes</option>
+                <option value="none">None</option>
               </select>
             </label>
           </div>

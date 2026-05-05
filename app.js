@@ -8,12 +8,19 @@ const MATERIALS = {
 };
 
 const COLS = 96;
-const ROWS = 64;
-const CELL = 12;
+const DISPLAY_ROWS = 64;
+const VERTICAL_SCALE = 10;
+const ROWS = DISPLAY_ROWS * VERTICAL_SCALE;
+const CELL_X = 12;
+const CELL_Y = 12 / VERTICAL_SCALE;
 const MARGIN_X = 24;
 const MARGIN_Y = 26;
 const MASK_BAND = 30;
 const LEGEND_W = 250;
+const OUTPUT_PAD_X = 28;
+const OUTPUT_PAD_Y = 20;
+const OUTPUT_TOP_PADDING_ROWS = 3 * VERTICAL_SCALE;
+const SUBSTRATE_THICKNESS_CELLS = 4;
 
 const canvas = document.getElementById("scene");
 const ctx = canvas.getContext("2d");
@@ -137,6 +144,16 @@ function normalizeMaterialName(raw) {
   return raw.trim().replace(/\s+/g, " ");
 }
 
+function getAmountSubcells() {
+  const value = Number(amountInput.value);
+  const cells = Number.isFinite(value) ? value : 1;
+  return Math.max(1, Math.round(cells * VERTICAL_SCALE));
+}
+
+function formatAmount(subcells) {
+  return (subcells / VERTICAL_SCALE).toFixed(1).replace(/\.0$/, "");
+}
+
 function saveMaterial() {
   const selected = selectedLibraryMaterial;
   const name = normalizeMaterialName(materialNameInput.value);
@@ -212,7 +229,7 @@ function createEmptyGrid() {
 
 function seedSubstrate() {
   grid = createEmptyGrid();
-  const substrateThickness = 8;
+  const substrateThickness = SUBSTRATE_THICKNESS_CELLS * VERTICAL_SCALE;
   for (let r = ROWS - substrateThickness; r < ROWS; r += 1) {
     for (let c = 0; c < COLS; c += 1) grid[r][c] = "Si";
   }
@@ -383,6 +400,20 @@ function applyMaskPreset(name) {
   if (name === "none") return;
   mask.fill(false);
 
+  if (name === "single-device") {
+    const { lineWidth, spaceWidth } = getLineSpaceWidths();
+    const firstValue = maskBrush.value === "protect";
+    const cycleWidth = lineWidth + spaceWidth;
+    const start = Math.max(0, Math.floor((COLS - cycleWidth) / 2));
+    mask.fill(true);
+
+    for (let i = 0; i < cycleWidth; i += 1) {
+      const col = start + i;
+      if (col >= COLS) break;
+      mask[col] = i < lineWidth ? firstValue : !firstValue;
+    }
+  }
+
   if (name === "lines") {
     const { lineWidth, spaceWidth } = getLineSpaceWidths();
     const firstValue = maskBrush.value === "protect";
@@ -408,7 +439,7 @@ function getColFromPointer(ev) {
   const rect = canvas.getBoundingClientRect();
   const sx = canvas.width / rect.width;
   const x = (ev.clientX - rect.left) * sx;
-  const col = Math.floor((x - MARGIN_X) / CELL);
+  const col = Math.floor((x - MARGIN_X) / CELL_X);
   if (col < 0 || col >= COLS) return null;
   return col;
 }
@@ -434,9 +465,51 @@ function drawMaskAtPointer(ev) {
   render();
 }
 
+function drawMaterialRuns(targetCtx, sceneGrid, x, y, topRow = 0) {
+  for (let c = 0; c < COLS; c += 1) {
+    let r = topRow;
+    while (r < ROWS) {
+      const material = sceneGrid[r][c];
+      if (!material) {
+        r += 1;
+        continue;
+      }
+
+      const start = r;
+      while (r < ROWS && sceneGrid[r][c] === material) r += 1;
+      targetCtx.fillStyle = MATERIALS[material].color;
+      targetCtx.fillRect(
+        x + c * CELL_X,
+        y + (start - topRow) * CELL_Y,
+        CELL_X,
+        (r - start) * CELL_Y
+      );
+    }
+  }
+}
+
+function appendMaterialRunRects(parts, sceneGrid, x, y) {
+  for (let c = 0; c < COLS; c += 1) {
+    let r = 0;
+    while (r < ROWS) {
+      const material = sceneGrid[r][c];
+      if (!material) {
+        r += 1;
+        continue;
+      }
+
+      const start = r;
+      while (r < ROWS && sceneGrid[r][c] === material) r += 1;
+      parts.push(
+        `<rect x="${x + c * CELL_X}" y="${y + start * CELL_Y}" width="${CELL_X}" height="${(r - start) * CELL_Y}" fill="${MATERIALS[material].color}"/>`
+      );
+    }
+  }
+}
+
 function render() {
-  const w = MARGIN_X * 2 + COLS * CELL + LEGEND_W;
-  const h = MARGIN_Y * 2 + MASK_BAND + ROWS * CELL;
+  const w = MARGIN_X * 2 + COLS * CELL_X + LEGEND_W;
+  const h = MARGIN_Y * 2 + MASK_BAND + ROWS * CELL_Y;
   canvas.width = w;
   canvas.height = h;
 
@@ -446,28 +519,21 @@ function render() {
 
   const gx = MARGIN_X;
   const gy = MARGIN_Y + MASK_BAND;
-  const lx = gx + COLS * CELL + 20;
+  const lx = gx + COLS * CELL_X + 20;
   const ly = gy;
 
   ctx.fillStyle = "#ffffff";
-  ctx.fillRect(gx, gy, COLS * CELL, ROWS * CELL);
+  ctx.fillRect(gx, gy, COLS * CELL_X, ROWS * CELL_Y);
 
   ctx.fillStyle = "#eaf1fb";
-  ctx.fillRect(gx, gy - MASK_BAND - 6, COLS * CELL, MASK_BAND + 6);
+  ctx.fillRect(gx, gy - MASK_BAND - 6, COLS * CELL_X, MASK_BAND + 6);
 
-  for (let r = 0; r < ROWS; r += 1) {
-    for (let c = 0; c < COLS; c += 1) {
-      const m = grid[r][c];
-      if (!m) continue;
-      ctx.fillStyle = MATERIALS[m].color;
-      ctx.fillRect(gx + c * CELL, gy + r * CELL, CELL, CELL);
-    }
-  }
+  drawMaterialRuns(ctx, grid, gx, gy);
 
   for (let c = 0; c < COLS; c += 1) {
     if (!mask[c]) continue;
     ctx.fillStyle = "rgba(216, 77, 87, 0.28)";
-    ctx.fillRect(gx + c * CELL, gy - MASK_BAND, CELL, MASK_BAND + ROWS * CELL);
+    ctx.fillRect(gx + c * CELL_X, gy - MASK_BAND, CELL_X, MASK_BAND + ROWS * CELL_Y);
   }
 
   ctx.fillStyle = "#4b5d73";
@@ -538,31 +604,24 @@ async function exportPng() {
   downloadFile(blob, "process-cross-section.png");
 }
 
-function getTopContentRow() {
-  return getTopContentRowForGrid(grid);
+function createOutputImageData() {
+  return createOutputFigureFromState(grid).data;
 }
 
-function getTopContentRowForGrid(sceneGrid) {
-  let top = ROWS - 1;
+function getOutputTopRowForGrid(sceneGrid) {
   for (let r = 0; r < ROWS; r += 1) {
     for (let c = 0; c < COLS; c += 1) {
-      if (sceneGrid[r][c] !== null) return Math.max(0, r - 3);
+      if (sceneGrid[r][c] !== null) return Math.max(0, r - OUTPUT_TOP_PADDING_ROWS);
     }
   }
-  return top;
+  return ROWS - SUBSTRATE_THICKNESS_CELLS * VERTICAL_SCALE;
 }
 
-function createOutputImageData() {
-  return createOutputImageDataFromState(grid, mask);
-}
-
-function createOutputImageDataFromState(sceneGrid, sceneMask) {
-  const topRow = getTopContentRowForGrid(sceneGrid);
+function createOutputFigureFromState(sceneGrid) {
+  const topRow = getOutputTopRowForGrid(sceneGrid);
   const visibleRows = ROWS - topRow;
-  const padX = 28;
-  const padY = 20;
-  const w = COLS * CELL + padX * 2;
-  const h = visibleRows * CELL + MASK_BAND + padY * 2;
+  const w = COLS * CELL_X + OUTPUT_PAD_X * 2;
+  const h = visibleRows * CELL_Y + OUTPUT_PAD_Y * 2;
   const out = document.createElement("canvas");
   out.width = w;
   out.height = h;
@@ -570,54 +629,39 @@ function createOutputImageDataFromState(sceneGrid, sceneMask) {
 
   outCtx.fillStyle = "#ffffff";
   outCtx.fillRect(0, 0, w, h);
-  outCtx.fillStyle = "#d9e6f8";
-  outCtx.fillRect(padX, padY, COLS * CELL, MASK_BAND);
+  drawMaterialRuns(outCtx, sceneGrid, OUTPUT_PAD_X, OUTPUT_PAD_Y, topRow);
+  return {
+    data: out.toDataURL("image/png"),
+    widthPx: w,
+    heightPx: h,
+  };
+}
 
-  const gy = padY + MASK_BAND;
-  for (let r = topRow; r < ROWS; r += 1) {
-    for (let c = 0; c < COLS; c += 1) {
-      const m = sceneGrid[r][c];
-      if (!m) continue;
-      outCtx.fillStyle = MATERIALS[m].color;
-      outCtx.fillRect(padX + c * CELL, gy + (r - topRow) * CELL, CELL, CELL);
-    }
-  }
-
-  for (let c = 0; c < COLS; c += 1) {
-    if (!sceneMask[c]) continue;
-    outCtx.fillStyle = "rgba(216, 77, 87, 0.28)";
-    outCtx.fillRect(padX + c * CELL, padY, CELL, MASK_BAND + visibleRows * CELL);
-  }
-  return out.toDataURL("image/png");
+function createOutputImageDataFromState(sceneGrid) {
+  return createOutputFigureFromState(sceneGrid).data;
 }
 
 function buildSvg() {
-  const w = MARGIN_X * 2 + COLS * CELL + LEGEND_W;
-  const h = MARGIN_Y * 2 + MASK_BAND + ROWS * CELL;
+  const w = MARGIN_X * 2 + COLS * CELL_X + LEGEND_W;
+  const h = MARGIN_Y * 2 + MASK_BAND + ROWS * CELL_Y;
   const gx = MARGIN_X;
   const gy = MARGIN_Y + MASK_BAND;
-  const lx = gx + COLS * CELL + 20;
+  const lx = gx + COLS * CELL_X + 20;
   const ly = gy;
 
   const parts = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`,
     `<rect x="0" y="0" width="${w}" height="${h}" fill="#f8fbff"/>`,
-    `<rect x="${gx}" y="${gy}" width="${COLS * CELL}" height="${ROWS * CELL}" fill="#ffffff"/>`,
-    `<rect x="${gx}" y="${gy - MASK_BAND - 6}" width="${COLS * CELL}" height="${MASK_BAND + 6}" fill="#eaf1fb"/>`,
+    `<rect x="${gx}" y="${gy}" width="${COLS * CELL_X}" height="${ROWS * CELL_Y}" fill="#ffffff"/>`,
+    `<rect x="${gx}" y="${gy - MASK_BAND - 6}" width="${COLS * CELL_X}" height="${MASK_BAND + 6}" fill="#eaf1fb"/>`,
   ];
 
-  for (let r = 0; r < ROWS; r += 1) {
-    for (let c = 0; c < COLS; c += 1) {
-      const m = grid[r][c];
-      if (!m) continue;
-      parts.push(`<rect x="${gx + c * CELL}" y="${gy + r * CELL}" width="${CELL}" height="${CELL}" fill="${MATERIALS[m].color}"/>`);
-    }
-  }
+  appendMaterialRunRects(parts, grid, gx, gy);
 
   for (let c = 0; c < COLS; c += 1) {
     if (!mask[c]) continue;
     parts.push(
-      `<rect x="${gx + c * CELL}" y="${gy - MASK_BAND}" width="${CELL}" height="${MASK_BAND + ROWS * CELL}" fill="rgba(216,77,87,0.28)"/>`
+      `<rect x="${gx + c * CELL_X}" y="${gy - MASK_BAND}" width="${CELL_X}" height="${MASK_BAND + ROWS * CELL_Y}" fill="rgba(216,77,87,0.28)"/>`
     );
   }
 
@@ -648,18 +692,24 @@ function exportSvg() {
 
 function getExportFrames() {
   if (savedSlides.length > 0) {
-    return savedSlides.map((frame) => ({
-      ...frame,
-      imageData:
-        frame.grid && frame.mask
-          ? createOutputImageDataFromState(frame.grid, frame.mask)
-          : frame.imageData,
-    }));
+    return savedSlides.map((frame) => {
+      if (!frame.grid) return frame;
+      const figure = createOutputFigureFromState(frame.grid);
+      return {
+        ...frame,
+        imageData: figure.data,
+        imageWidthPx: figure.widthPx,
+        imageHeightPx: figure.heightPx,
+      };
+    });
   }
 
+  const figure = createOutputFigureFromState(grid);
   return [{
     label: "Current view",
-    imageData: createOutputImageData(),
+    imageData: figure.data,
+    imageWidthPx: figure.widthPx,
+    imageHeightPx: figure.heightPx,
     ops: steps.slice(-10),
     purpose: "",
     targetMaterial: "",
@@ -712,40 +762,36 @@ function addMaterialLegend(slide, x, y, scale = 1) {
   });
 }
 
+function imageHeightForWidth(frame, width) {
+  if (!frame.imageWidthPx || !frame.imageHeightPx) return width * 0.42;
+  return width * (frame.imageHeightPx / frame.imageWidthPx);
+}
+
 function addSingleFrameSlides(pptx, frames) {
-  frames.forEach((frame, idx) => {
+  frames.forEach((frame) => {
     const slide = pptx.addSlide();
     slide.background = { color: "FFFFFF" };
     slide.addShape("rect", {
       x: 0,
       y: 0,
       w: 13.333,
-      h: 0.78,
+      h: 0.08,
       line: { color: "1F5B8F", transparency: 100 },
       fill: { color: "1F5B8F" },
     });
-    slide.addText(frame.label.replace(/^Saved \d+:\s*/, ""), {
-      x: 0.4,
-      y: 0.15,
-      w: 10.4,
-      h: 0.4,
-      fontSize: 25,
-      color: "FFFFFF",
-      charSpace: 2,
-      fit: "shrink",
-    });
-    slide.addText(String(idx + 1), {
-      x: 12.35,
-      y: 0.14,
-      w: 0.55,
-      h: 0.4,
-      fontSize: 23,
-      color: "FFFFFF",
-      align: "right",
-    });
 
-    slide.addImage({ data: frame.imageData, x: 0.15, y: 2.75, w: 4.7, h: 2.0 });
-    addMaterialLegend(slide, 0.15, 5.35, 1.2);
+    addMaterialLegend(slide, 5.25, 0.55, 1.25);
+
+    const imageW = 4.85;
+    const imageH = imageHeightForWidth(frame, imageW);
+    const imageBottomY = 5.35;
+    slide.addImage({
+      data: frame.imageData,
+      x: 0.35,
+      y: imageBottomY - imageH,
+      w: imageW,
+      h: imageH,
+    });
 
     const details = [
       ["Purpose", frame.purpose || "-"],
@@ -753,11 +799,11 @@ function addSingleFrameSlides(pptx, frames) {
     ];
 
     details.forEach(([label, value], detailIndex) => {
-      const y = 1.7 + detailIndex * 0.85;
+      const y = 2.45 + detailIndex * 0.85;
       slide.addText(`${label} :`, {
         x: 5.35,
         y,
-        w: 2.1,
+        w: 1.35,
         h: 0.32,
         fontSize: 20,
         bold: true,
@@ -765,9 +811,9 @@ function addSingleFrameSlides(pptx, frames) {
         fit: "shrink",
       });
       slide.addText(value, {
-        x: 7.0,
+        x: 6.95,
         y,
-        w: 5.6,
+        w: 5.5,
         h: 0.34,
         fontSize: 20,
         color: "111111",
@@ -829,17 +875,20 @@ function addEightUpSlides(pptx, frames) {
         fit: "shrink",
       });
 
+      const tileImageW = 2.77;
+      const tileImageH = imageHeightForWidth(frame, tileImageW);
+      const tileImageBottomY = tileY + 2.08;
       slide.addImage({
         data: frame.imageData,
-        x: tileX + 0.08,
-        y: tileY + 0.36,
-        w: 2.69,
-        h: 1.55,
+        x: tileX + 0.04,
+        y: tileImageBottomY - tileImageH,
+        w: tileImageW,
+        h: tileImageH,
       });
 
       slide.addText(`Purpose: ${frame.purpose || "-"}`, {
         x: tileX + 0.08,
-        y: tileY + 1.98,
+        y: tileY + 2.28,
         w: 2.69,
         h: 0.28,
         fontSize: 7,
@@ -848,7 +897,7 @@ function addEightUpSlides(pptx, frames) {
       });
       slide.addText(`Material: ${frame.targetMaterial || "-"}`, {
         x: tileX + 0.08,
-        y: tileY + 2.23,
+        y: tileY + 2.53,
         w: 2.69,
         h: 0.28,
         fontSize: 7,
@@ -906,20 +955,20 @@ function saveCurrentScene() {
 
 function applyDeposit() {
   const material = materialSelect.value;
-  const amount = Math.max(1, Number(amountInput.value) || 1);
+  const amount = getAmountSubcells();
   pushHistory();
   deposit(material, amount, useMask.checked);
-  addStep(`Deposit ${material} x${amount} ${useMask.checked ? "(mask)" : ""}`.trim());
+  addStep(`Deposit ${material} x${formatAmount(amount)} ${useMask.checked ? "(mask)" : ""}`.trim());
   render();
 }
 
 function applyEtch() {
   const material = materialSelect.value;
-  const amount = Math.max(1, Number(amountInput.value) || 1);
+  const amount = getAmountSubcells();
   pushHistory();
   if (etchType.value === "anisotropic") etchAnisotropic(material, amount, useMask.checked);
   else etchIsotropic(material, amount, useMask.checked);
-  addStep(`Etch ${material} ${etchType.value} x${amount} ${useMask.checked ? "(mask)" : ""}`.trim());
+  addStep(`Etch ${material} ${etchType.value} x${formatAmount(amount)} ${useMask.checked ? "(mask)" : ""}`.trim());
   render();
 }
 
