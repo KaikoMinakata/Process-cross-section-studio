@@ -1,5 +1,5 @@
 const MATERIALS = {
-  Si: { color: "#7a8ca4" },
+  Si: { color: "#111111" },
   SiO2: { color: "#5ba3d9" },
   SiN: { color: "#8a6ccf" },
   Poly: { color: "#f0a64a" },
@@ -732,17 +732,15 @@ function updateExportStatus() {
 }
 
 function addMaterialLegend(slide, x, y, scale = 1) {
-  const items = [
-    ["Si", MATERIALS.Si.color],
-    ["SiO2", MATERIALS.SiO2.color],
-    ["Si3N4", MATERIALS.SiN.color],
-    ["Resist", MATERIALS.PR.color],
-  ];
+  const items = Object.entries(MATERIALS).map(([name, spec]) => [name, spec.color]);
 
   items.forEach(([name, color], index) => {
-    const itemY = y + index * 0.22 * scale;
+    const col = Math.floor(index / 4);
+    const row = index % 4;
+    const itemX = x + col * 1.0 * scale;
+    const itemY = y + row * 0.22 * scale;
     slide.addShape("rect", {
-      x,
+      x: itemX,
       y: itemY,
       w: 0.85 * scale,
       h: 0.16 * scale,
@@ -750,12 +748,12 @@ function addMaterialLegend(slide, x, y, scale = 1) {
       fill: { color: color.replace("#", "") },
     });
     slide.addText(name, {
-      x: x + 0.12 * scale,
+      x: itemX + 0.08 * scale,
       y: itemY - 0.005,
-      w: 0.6 * scale,
+      w: 0.69 * scale,
       h: 0.16 * scale,
-      fontSize: 8 * scale,
-      color: "111111",
+      fontSize: Math.max(6, 8 * scale),
+      color: name === "Si" ? "FFFFFF" : "111111",
       align: "center",
       margin: 0,
     });
