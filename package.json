@@ -1,0 +1,17 @@
+{
+  "name": "process-cross-section-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser-based semiconductor process cross-section drawing and PPTX export tool.",
+  "scripts": {
+    "dev": "npx serve .",
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "semiconductor",
+    "process",
+    "cross-section",
+    "pptx"
+  ],
+  "license": "UNLICENSED"
+}

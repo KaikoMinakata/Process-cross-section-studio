@@ -1,0 +1,277 @@
+:root {
+  --bg: #eef2f7;
+  --panel: #ffffff;
+  --ink: #14233a;
+  --muted: #5f6f82;
+  --line: #d2dbe8;
+  --primary: #005bbb;
+  --primary-2: #0d7b83;
+  --danger: #c3362c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  background: radial-gradient(circle at 8% 4%, #f8fbff 0 10%, transparent 34%), linear-gradient(160deg, #e9eff7 0%, #f4f8fd 55%, #eef6f6 100%);
+}
+
+header {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #dde4ef;
+}
+
+h1 {
+  margin: 0 0 6px;
+  font-size: 1.4rem;
+}
+
+header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+main {
+  padding: 14px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 360px minmax(0, 1fr);
+  height: calc(100vh - 88px);
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--panel) 95%, #eef4ff 5%);
+  box-shadow: 0 8px 22px rgba(24, 45, 77, 0.08);
+  padding: 12px;
+  min-height: 0;
+}
+
+.controls {
+  overflow: auto;
+}
+
+.viewer {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+h2 {
+  margin: 6px 0 8px;
+  font-size: 0.98rem;
+}
+
+.control-block {
+  border: 1px solid #dde5f0;
+  border-radius: 12px;
+  padding: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  margin-bottom: 12px;
+}
+
+.block-head {
+  margin-bottom: 10px;
+}
+
+.block-head h2 {
+  margin: 0 0 4px;
+}
+
+.block-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+input,
+select,
+button {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 9px;
+  background: #fff;
+  color: var(--ink);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 62px;
+}
+
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 6px;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.control-block .buttons:last-child {
+  margin-bottom: 0;
+}
+
+button {
+  border: none;
+  border-radius: 9px;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: #fff;
+  font-weight: 600;
+  background: linear-gradient(120deg, var(--primary), color-mix(in oklab, var(--primary) 70%, var(--primary-2) 30%));
+}
+
+button.secondary {
+  background: #eaf0f9;
+  color: #1d2b40;
+}
+
+button.danger {
+  background: var(--danger);
+}
+
+.hint,
+.legend {
+  margin: 6px 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.warning {
+  color: #b14700;
+  font-weight: 700;
+}
+
+.canvas-wrap {
+  border: none;
+  border-radius: 0;
+  overflow: auto;
+  height: calc(100% - 48px);
+  background: transparent;
+  box-shadow: none;
+}
+
+canvas {
+  display: block;
+}
+
+#historyList {
+  margin: 0;
+  padding-left: 18px;
+  color: #344860;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+#historyList li {
+  margin-bottom: 4px;
+}
+
+#savedList {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: #344860;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+#savedList li {
+  margin-bottom: 4px;
+}
+
+#materialList {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+#materialList li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 9px;
+  border: 1px solid #dde5f0;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #344860;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+
+#materialList li.is-selected {
+  border-color: #2f7cc4;
+  background: #eef6ff;
+  box-shadow: 0 0 0 1px rgba(47, 124, 196, 0.18);
+}
+
+.material-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid #8798ad;
+  flex: 0 0 auto;
+}
+
+.material-name {
+  font-weight: 600;
+  color: #203248;
+}
+
+.material-tag {
+  margin-left: auto;
+  color: #5f6f82;
+  font-size: 0.74rem;
+}
+
+@media (max-width: 1024px) {
+  main {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .viewer {
+    min-height: 520px;
+  }
+
+  .canvas-wrap {
+    height: 72vh;
+  }
+}

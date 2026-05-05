@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Process Cross-Section Studio</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Process Cross-Section Studio</h1>
+      <p>Draw semiconductor process cross-sections in a GUI with mask editing, isotropic/anisotropic etch, and PowerPoint export.</p>
+    </header>
+
+    <main>
+      <section class="panel controls">
+        <div class="control-block">
+          <div class="block-head">
+            <h2>Process Ops</h2>
+            <p>Run deposition and etch operations on the current cross-section.</p>
+          </div>
+          <div class="group">
+            <label>
+              Material
+              <select id="materialSelect"></select>
+            </label>
+            <label>
+              Thickness / Depth (cell)
+              <input id="amountInput" type="number" min="1" max="40" value="6" />
+            </label>
+            <label>
+              Etch Type
+              <select id="etchType">
+                <option value="anisotropic">Anisotropic</option>
+                <option value="isotropic">Isotropic</option>
+              </select>
+            </label>
+            <label>
+              Apply Mask
+              <input id="useMask" type="checkbox" checked />
+            </label>
+          </div>
+          <div class="buttons">
+            <button id="depositBtn">Deposit</button>
+            <button id="etchBtn">Etch</button>
+            <button id="saveSceneBtn">Save</button>
+            <button id="stripBtn" class="secondary">Strip Selected</button>
+            <button id="undoBtn" class="secondary">Undo</button>
+            <button id="resetBtn" class="danger">Reset</button>
+          </div>
+          <div class="group">
+            <label>
+              Process Purpose
+              <textarea id="purposeInput" rows="2" placeholder="Example: Ensure device isolation with STI formation"></textarea>
+            </label>
+            <label>
+              Target Material (Deposition / Etch)
+              <textarea id="targetMaterialInput" rows="2" placeholder="Example: Anisotropic etch of SiO2"></textarea>
+            </label>
+          </div>
+        </div>
+
+        <div class="control-block">
+          <div class="block-head">
+            <h2>Mask Ops</h2>
+            <p>Edit line/space masks and drag patterns on the canvas.</p>
+          </div>
+          <div class="group">
+            <label>
+              Brush
+              <select id="maskBrush">
+                <option value="protect">Protect (mask ON)</option>
+                <option value="open">Open (mask OFF)</option>
+              </select>
+            </label>
+            <label>
+              Pattern Mode
+              <select id="maskPatternMode">
+                <option value="solid">Solid</option>
+                <option value="stripe">Stripe</option>
+              </select>
+            </label>
+            <label>
+              Line Width
+              <input id="lineWidthInput" type="number" min="1" max="32" value="1" />
+            </label>
+            <label>
+              Space Width
+              <input id="spaceWidthInput" type="number" min="1" max="32" value="1" />
+            </label>
+            <label>
+              Mask Preset
+              <select id="maskPreset">
+                <option value="none">None</option>
+                <option value="lines">Line/Space</option>
+                <option value="contact">Contact Holes</option>
+              </select>
+            </label>
+          </div>
+          <div class="buttons">
+            <button id="applyPresetBtn" class="secondary">Preset Apply</button>
+            <button id="clearMaskBtn" class="secondary">Mask Clear</button>
+          </div>
+          <p class="hint">Drag across the canvas to edit the mask column by column.</p>
+        </div>
+
+        <div class="control-block">
+          <div class="block-head">
+            <h2>Export</h2>
+            <p>Export saved process steps as presentation-ready outputs.</p>
+          </div>
+          <div class="group">
+            <label>
+              PPTX Layout
+              <select id="pptLayoutMode">
+                <option value="single">1 Step / 1 Slide</option>
+                <option value="eight-up">8 Steps / 1 Slide</option>
+              </select>
+            </label>
+          </div>
+          <div class="buttons">
+            <button id="svgBtn" class="secondary">Export SVG</button>
+            <button id="pngBtn" class="secondary">Export PNG</button>
+            <button id="pptxBtn">Export PPTX</button>
+          </div>
+          <p id="exportStatus" class="hint">Checking PPTX library...</p>
+          <p class="hint">Saved cross-sections are exported to PPTX in the order they were saved.</p>
+          <ol id="savedList"></ol>
+        </div>
+
+        <div class="control-block">
+          <div class="block-head">
+            <h2>Session Log</h2>
+            <p>Review the action history for the current process build.</p>
+          </div>
+          <ol id="historyList"></ol>
+        </div>
+
+        <div class="control-block">
+          <div class="block-head">
+            <h2>Material Library</h2>
+            <p>Define material names and colors used in the canvas, legend, and exports.</p>
+          </div>
+          <div class="group">
+            <label>
+              Material Name
+              <input id="materialNameInput" type="text" placeholder="Example: W" />
+            </label>
+            <label>
+              Material Color
+              <input id="materialColorInput" type="color" value="#5ba3d9" />
+            </label>
+          </div>
+          <div class="buttons">
+            <button id="saveMaterialBtn">Add Material</button>
+            <button id="deleteMaterialBtn" class="secondary">Delete Selected</button>
+          </div>
+          <ul id="materialList"></ul>
+        </div>
+      </section>
+
+      <section class="panel viewer">
+        <h2>Cross-Section Canvas</h2>
+        <div class="canvas-wrap">
+          <canvas id="scene" width="1200" height="760"></canvas>
+        </div>
+        <p class="legend">The legend is always shown on the right. Red translucent fill indicates mask protection.</p>
+      </section>
+    </main>
+
+    <script>
+      function loadPptxFallback() {
+        const script = document.createElement("script");
+        script.src = "https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgen.bundle.js";
+        document.head.appendChild(script);
+      }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" onerror="loadPptxFallback()"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
